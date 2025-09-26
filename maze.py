@@ -1,5 +1,5 @@
 import numpy as np
-
+import random
 # n 25, 50
 class Maze():
     def __init__(self, n):
@@ -57,11 +57,27 @@ class Maze():
         self.matrix[1, 1] = " X "  # Mala salida
         self.matrix[10, 16] = " X "  # Mala salida
         self.matrix[17, 3] = " O "  # Buena salida
-
+    def mover_laberinto(self):
+        for i in range(19):
+            for j in range(19):
+                if i==0 or i==19 or j==0 or j==19:
+                    self.matrix[i,j]=" ▣ "
+                elif (self.matrix[i,j]==" X " or self.matrix[i,j]==" O "):
+                    continue
+                elif(self.matrix[i,j]==" ▣ "):
+                    random_num=random.randint(1,10)
+                    if random_num<=3:
+                        self.matrix[i,j]="  "
+                elif(self.matrix[i,j]=="  "):
+                     random_num=random.randint(1,10)
+                     if random_num<=3:
+                         self.matrix[i,j]=" ▣ "
+        pass
     def printMaze(self):
         for fila in self.matrix:
             print("".join(fila))
 
 lab=Maze(20)
 lab.laberinto_estatico()
+lab.mover_laberinto()
 lab.printMaze()
