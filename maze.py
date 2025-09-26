@@ -4,7 +4,7 @@ import random
 class Maze():
     def __init__(self, n):
         self.n = n
-        self.matrix = np.full((n,n), " ") 
+        self.matrix = np.full((n,n), "  ")
         pass
     
     def laberinto_estatico(self):
@@ -47,24 +47,24 @@ class Maze():
         self.matrix[16:19, 15] = " ▣"  # Pared vertical
         self.matrix[17, 12:16] = " ▣"  # Pared horizontal
 
-
+        # Abrir algunos espacios
         self.matrix[1, 1:6] = "  "  
         self.matrix[1, 11:19] = "  "
-
         self.matrix[16, 5] = "  "
         self.matrix[18, 15] = "  "
 
-        self.matrix[1, 1] = " X "  # Mala salida
-        self.matrix[10, 16] = " X "  # Mala salida
-        self.matrix[17, 3] = " O "  # Buena salida
+        self.matrix[1, 1] = " X"  # Mala salida
+        self.matrix[10, 16] = " X"  # Mala salida
+        self.matrix[17, 3] = " O"  # Buena salida
 
-    def mover_laberinto(self):
-        for i in range(19):
-            for j in range(19):
+    def mover_laberinto(self):     
+        for i in range(20):
+            for j in range(20):
+                # Mantener bordes como paredes
                 if i==0 or i==19 or j==0 or j==19:
                     self.matrix[i,j]=" ▣" 
                     continue
-                elif (self.matrix[i,j]==" X " or self.matrix[i,j]==" O "):
+                elif (self.matrix[i,j]==" X" or self.matrix[i,j]==" O"):
                     continue
                 elif(self.matrix[i,j]==" ▣"):  
                     random_num=random.randint(1,10)
@@ -76,8 +76,7 @@ class Maze():
                      if random_num<=3:
                          self.matrix[i,j]=" ▣" 
                          continue
-        pass
-
+    
     def printMaze(self):
         for fila in self.matrix:
             print("".join(fila))
@@ -85,6 +84,6 @@ class Maze():
 lab=Maze(20)
 lab.laberinto_estatico()
 lab.printMaze()
-print("\n\n")
+print("\n")
 lab.mover_laberinto()
 lab.printMaze()
