@@ -1,3 +1,5 @@
+import random 
+
 class Lrta():
     def __init__(self):
         self.H = {}  # heurística aprendida
@@ -54,12 +56,27 @@ class Lrta():
                 for act, _ in succs
             )
         
-        # Elegir la acción que minimiza el costo
+        # Calcula costos de todas las acciones
         succs = self.actions(s_prime, maze)
-        a, s_next = min(
-            succs,
-            key=lambda x: self.lrta_cost(s_prime, x[0], self.result.get((s_prime, x[0]), x[1]), goal)
-        )
+        costs = []
+        for a, s_next in succs:
+            c = self.lrta_cost(s_prime, a, self.result.get((s_prime, a), s_next), goal)
+            costs.append((a, s_next, c))
+
+        # Desempate aleatorio para evitar siempre la misma elección si hay empates
+        random.shuffle(costs)   # Mezcla el orden actual
+        costs.sort(key=lambda x: x[2])  # Luego ordena por costo
+
+        # Elegir la mejor acción evitando regresar al estado anterior si es posible
+        best_action, best_state, best_cost = costs[0]
+        for a, s_next, c in costs:
+            if self.s_prev is not None and s_next == self.s_prev and c == best_cost:
+                continue  # Evita loops de dos estados
+            best_action, best_state, best_cost = a, s_next, c
+            break
+
+        a, s_next = best_action, best_state
+
         
         self.s_prev, self.a_prev = s_prime, a
         return a, s_next

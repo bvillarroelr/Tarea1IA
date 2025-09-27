@@ -46,7 +46,7 @@ for step in range(max_steps):
     pos = next_pos
 
     # Cambiar dinámicamente el laberinto
-    lab.mover_laberinto()
+    # lab.mover_laberinto()
 
     # Mouestra el estado actual
     print(f"\nPaso {step} → Acción {action} → Nueva posición {pos}")
