@@ -1,4 +1,4 @@
-class lrta():
+class Lrta():
     def __init__(self):
         self.H = {}  # heurística aprendida
         self.result = {}  # transiciones observadas

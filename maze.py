@@ -110,6 +110,16 @@ class Maze():
     def printLogical(self):
         print(self.logical_matrix)
 
+    def agent_start_position(self):
+        x = random.randint(1, self.n-2)
+        y = random.randint(1, self.n-2)
+        while self.logical_matrix[x,y] != 0:  # Asegurarse de que es un espacio libre
+            x = random.randint(1, self.n-2)
+            y = random.randint(1, self.n-2)
+        self.logical_matrix[x,y] = 1  # Colocar al agente en la posición inicial
+        return (x,y)
+
+
 lab=Maze(20)
 lab.laberinto_estatico()
 lab.printMaze()
