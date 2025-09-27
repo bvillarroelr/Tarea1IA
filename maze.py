@@ -119,7 +119,7 @@ class Maze():
         self.logical_matrix[x,y] = 1  # Colocar al agente en la posición inicial
         return (x,y)
 
-
+""""
 lab=Maze(20)
 lab.laberinto_estatico()
 lab.printMaze()
@@ -128,3 +128,4 @@ print("\n")
 lab.mover_laberinto()
 lab.printMaze()
 lab.printLogical()
+"""

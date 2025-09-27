@@ -26,7 +26,7 @@ class Lrta():
         valid = []
         for a, (di, dj) in moves.items():
             ni, nj = state[0] + di, state[1] + dj
-            if maze.matrix[ni, nj] != 2:  # Si no es pared
+            if maze.logical_matrix[ni, nj] != 2:  # Si no es pared
                 valid.append((a, (ni, nj)))
         return valid
 
