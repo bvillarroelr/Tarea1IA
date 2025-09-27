@@ -5,10 +5,10 @@ import time
 #Iniciamos el laberinto y el agente LRTA*
 lab=maze.Maze(20)
 lab.laberinto_estatico()
-agent=lrta.Lrta()
+search=lrta.Lrta()
 goal=(17,3)
 pos = lab.agent_start_position() # Posición inicial del agente
-agent.set_maze_and_goal(lab, goal)  # Meta fija en (17,3)
+#agent.set_maze_and_goal(lab, goal)  # Meta fija en (17,3)
 lab.update_visual_matrix()
 lab.printMaze()
 print("\n")
@@ -29,7 +29,7 @@ for step in range(max_steps):
         break
 
     # Elegir acción con LRTA*
-    decision = agent.lrta_agent(pos, goal, lab)
+    decision = search.lrta_agent(pos, goal, lab)
     if decision is None:
         print("\n Meta alcanzada (None devuelto)")
         break
