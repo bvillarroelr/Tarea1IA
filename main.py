@@ -5,7 +5,8 @@ from time import sleep
 import time
 #Iniciamos el laberinto y el agente LRTA*
 lab=maze.Maze(20)
-lab.laberinto_estatico()
+#lab.laberinto_estatico()
+lab.generateRandomMaze()
 search=lrta.Lrta()
 goal=(17,3)
 pos = lab.agent_start_position() # Posición inicial del agente

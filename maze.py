@@ -2,7 +2,7 @@ import numpy as np
 import random
 # n 25, 50
 # logical_matrix: 0 espacio libre, 1 agente, 2 paredes, 3 mala salida, 4 buena salida
-MAXWALLS = 20
+MAXWALLS = 15
 MAXEMPTYS = 20
 
 class Maze():
@@ -11,10 +11,40 @@ class Maze():
         self.logical_matrix = np.zeros((n,n))
         self.visual_matrix = np.full((n,n), "  ")
         self.agentProtectRadius = 4
-        self.exitProtectRadius = 4
+        self.exitProtectRadius = 8
         self.agent = None
         pass
     
+    def generateRandomMaze(self, wall_density=0.3):
+        # Inicializar bordes como paredes
+        self.logical_matrix[0, :] = 2  # Borde superior
+        self.logical_matrix[self.n-1, :] = 2  # Borde inferior
+        self.logical_matrix[:, 0] = 2  # Borde izquierdo
+        self.logical_matrix[:, self.n-1] = 2  # Borde derecho
+        
+        # Rellenar el interior del laberinto con paredes y espacios libres
+        for i in range(1, self.n-1):
+            for j in range(1, self.n-1):
+                if random.random() < wall_density:
+                    self.logical_matrix[i, j] = 2  # Pared
+                else:
+                    self.logical_matrix[i, j] = 0  # Espacio libre
+        
+        # Colocar salidas (3 malas y 1 buena)
+        exits_placed = 0
+        while exits_placed < 4:
+            x = random.randint(1, self.n-2)
+            y = random.randint(1, self.n-2)
+            if self.logical_matrix[x, y] == 0:  # Asegurarse de que es un espacio libre
+                if exits_placed < 3:
+                    self.logical_matrix[x, y] = 3  # Mala salida
+                else:
+                    self.logical_matrix[x, y] = 4  # Buena salida
+                exits_placed += 1
+        
+        # Actualizar la matriz visual basada en la lógica
+        self.update_visual_matrix()
+
     # NOTA: esta función crea un laberinto fijo, y de momento solo lo usamos de prueba
     def laberinto_estatico(self):
         # Bordes del laberinto (valor 2)
