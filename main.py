@@ -1,3 +1,4 @@
+import random
 import lrta
 import maze
 from time import sleep
@@ -49,12 +50,14 @@ for step in range(max_steps):
     pos = next_pos
 
     # Cambiar dinámicamente el laberinto
-    # lab.mover_laberinto()
+    random_num = random.uniform(0,1)
+    if random_num <= 0.05:  # 5% probabilidad
+        lab.mover_laberinto()
 
-    # Mouestra el estado actual
+    # Muestra el estado actual
     print(f"\nPaso {step} → Acción {action} → Nueva posición {pos}")
     lab.update_visual_matrix()
     lab.printMaze()
-    time.sleep(0.1)
+    time.sleep(0.8)
 else:
     print("\n Límite de pasos alcanzado sin llegar a la meta.")

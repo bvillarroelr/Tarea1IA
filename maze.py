@@ -2,11 +2,17 @@ import numpy as np
 import random
 # n 25, 50
 # logical_matrix: 0 espacio libre, 1 agente, 2 paredes, 3 mala salida, 4 buena salida
+MAXWALLS = 20
+MAXEMPTYS = 20
+
 class Maze():
     def __init__(self, n):
         self.n = n
         self.logical_matrix = np.zeros((n,n))
         self.visual_matrix = np.full((n,n), "  ")
+        self.agentProtectRadius = 4
+        self.exitProtectRadius = 4
+        self.agent = None
         pass
     
     # NOTA: esta función crea un laberinto fijo, y de momento solo lo usamos de prueba
@@ -80,24 +86,39 @@ class Maze():
                     self.visual_matrix[i,j] = " O"
 
     def mover_laberinto(self):     
+        walls = 0
+        emptys = 0
+        
         for i in range(self.n):
             for j in range(self.n):
                 # Mantener bordes como paredes
                 if i==0 or i==self.n-1 or j==0 or j==self.n-1:
                     self.logical_matrix[i,j] = 2  # Pared
                     continue
+
                 # No modificar salidas ni agente
                 elif (self.logical_matrix[i,j] == 3 or self.logical_matrix[i,j] == 4 or self.logical_matrix[i,j] == 1):
                     continue
+                # Protecciones para no encerrar salidas ni al agente
+                elif self.isProtected(i, j):
+                    continue
+
                 elif self.logical_matrix[i,j] == 2:  # Es pared
-                    random_num = random.randint(1,10)
-                    if random_num <= 3:
+                    random_num = random.randint(0,10)
+                    if random_num <= 1:
                         self.logical_matrix[i,j] = 0  # Cambiar a espacio libre
+                        emptys += 1
+                        if emptys >= MAXEMPTYS:
+                            return
                         continue
+
                 elif self.logical_matrix[i,j] == 0:  # Es espacio libre
-                    random_num = random.randint(1,10)
-                    if random_num <= 3:
+                    random_num = random.randint(0,10)
+                    if random_num <= 1:
                         self.logical_matrix[i,j] = 2  # Cambiar a pared
+                        walls += 1
+                        if walls >= MAXWALLS:
+                            return
                         continue
         
         # Actualizar la matriz visual después de todos los cambios
@@ -106,6 +127,34 @@ class Maze():
     def printMaze(self):
         for fila in self.visual_matrix:
             print("".join(fila))
+
+    def isProtected(self, x, y):
+        # Verificar protección del agente
+        if self.agent and self.agent.x is not None and self.agent.y is not None:
+            distancia_agente = self.manhattanDistance(x, y, self.agent.x, self.agent.y)
+            if distancia_agente <= self.agentProtectRadius:
+                return True
+        
+        # Verificar protección de salidas
+        salidas = self.findExits()
+        for salida_x, salida_y in salidas:
+            distancia_salida = self.manhattanDistance(x, y, salida_x, salida_y)
+            if distancia_salida <= self.exitProtectRadius:
+                return True
+        
+        return False
+        
+    # para espacio en el que solo nos podemos mover en 4 direcciones conviene usar la distancia manhattan
+    def manhattanDistance(self, x1, y1, x2, y2):
+        return abs(x1 - x2) + abs(y1 - y2)
+        
+    def findExits(self):
+        exits = []
+        for i in range(self.n):
+            for j in range(self.n):
+                if self.logical_matrix[i,j] == 3 or self.logical_matrix[i,j] == 4:
+                    exits.append((i, j))
+        return exits
 
     def printLogical(self):
         print(self.logical_matrix)
