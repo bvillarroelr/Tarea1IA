@@ -23,13 +23,16 @@ lab.printMaze()
 #Bucle de LRTA*
 max_steps = 300
 for step in range(max_steps):
+
+    current_goal = search.find_closest_goal(pos, lab)
+
     # Verificar si ya llegó a la meta
     if pos == goal:
         print(f"\n El agente llegó a la meta en {step} pasos")
         break
 
     # Elegir acción con LRTA*
-    decision = search.lrta_agent(pos, goal, lab)
+    decision = search.lrta_agent(pos, lab)
     if decision is None:
         print("\n Meta alcanzada (None devuelto)")
         break
@@ -52,6 +55,6 @@ for step in range(max_steps):
     print(f"\nPaso {step} → Acción {action} → Nueva posición {pos}")
     lab.update_visual_matrix()
     lab.printMaze()
-    time.sleep(1)
+    time.sleep(0.1)
 else:
     print("\n Límite de pasos alcanzado sin llegar a la meta.")

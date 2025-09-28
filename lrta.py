@@ -1,4 +1,5 @@
 import random 
+import agent
 
 class Lrta():
     def __init__(self):
@@ -8,14 +9,42 @@ class Lrta():
         self.a_prev = None  # acción previa
         self.maze = None  # referencia al laberinto
         self.goal = None  # meta fija
+        self.agente = agent.Agent()  # Instancia del agente
 
-    def set_maze_and_goal(self, maze, goal):
-        self.maze = maze
-        self.goal = goal
+   # def set_maze_and_goal(self, maze, goal): # Esto no lo estoy ocupando
+    #    self.maze = maze
+     #   self.goal = goal
+
+    def goals(self, maze):
+        goals = []
+        for i in range(maze.n):
+            for j in range(maze.n):
+                if maze.logical_matrix[i, j] >= 3:  # Si es una buena salida
+                    goals.append((i, j))
+        return goals
 
     def heuristic(self, state, goal):
         # Coordenadas de la posicion actual y la meta
         return abs(state[0] - goal[0]) + abs(state[1] - goal[1])
+    
+    def find_closest_goal(self, agent_position, maze):
+        goals = self.goals(maze)
+        
+        if not goals:
+            return None  # No hay metas disponibles
+        
+        # Calcular distancias a todas las metas
+        distances = []
+        for goal in goals:
+            distance = self.heuristic(agent_position, goal)
+            distances.append((distance, goal))
+        
+        # Ordenar por distancia y devolver la más cercana
+        distances.sort(key=lambda x: x[0])
+        closest_distance, closest_goal = distances[0]
+        
+        print(f"Agente en {agent_position}, meta más cercana: {closest_goal} (distancia: {closest_distance})")
+        return closest_goal
 
     def actions(self, state, maze):
         #Acciones posibles (N,S,E,O) si no son paredes.
@@ -37,9 +66,11 @@ class Lrta():
             return self.heuristic(s, goal)
         return 1 + self.H.get(s_next, self.heuristic(s_next, goal))
 
-    def lrta_agent(self, s_prime, goal, maze):
+    def lrta_agent(self, s_prime, maze):
         # Parametros son el estado actual, la meta y el laberinto
         # Si estamos en el objetivo, parar
+        goal= self.find_closest_goal(s_prime, maze)
+
         if s_prime == goal:
             return None
         
@@ -76,7 +107,9 @@ class Lrta():
             break
 
         a, s_next = best_action, best_state
-
         
         self.s_prev, self.a_prev = s_prime, a
+
+        self.agente.position_setter(s_next[0], s_next[1])  # Actualiza la posición del agente
+
         return a, s_next
