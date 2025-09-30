@@ -190,6 +190,11 @@ class Maze():
         print(self.logical_matrix)
 
     def agent_start_position(self): # Esto lo podríamos cambiar si queremos una ubicación fija
+        
+        x = self.n // 2
+        y = self.n // 2
+        return (x, y)
+        """
         x = random.randint(1, self.n-2)
         y = random.randint(1, self.n-2)
         while self.logical_matrix[x,y] != 0:  # Asegurarse de que es un espacio libre
@@ -197,6 +202,7 @@ class Maze():
             y = random.randint(1, self.n-2)
         self.logical_matrix[x,y] = 1  # Colocar al agente en la posición inicial
         return (x,y)
+        """
     
     def get_good_exit(self):
         for i in range(self.n):
