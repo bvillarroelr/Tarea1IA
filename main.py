@@ -16,7 +16,7 @@ print("2: Algoritmo Genético")
 metodo = int(input())
 """
 
-archivo_csv = "tiempos_lrta.csv"
+archivo_csv = "tiempos_gen35.csv" # cambiar nombre del archivo si se usa otro método o cantidad
 
 """
 while metodo not in [1, 2]:
@@ -24,12 +24,12 @@ while metodo not in [1, 2]:
     metodo = int(input())
 """
 
-metodo=1
+metodo=2
 if metodo == 1:
     print("\nHas elegido LRTA*.\n")
 
     #Iniciamos el laberinto y el agente LRTA*
-    lab=maze.Maze(20)
+    lab=maze.Maze(25)
     #lab.laberinto_estatico()
     lab.generateRandomMaze()
     search=lrta.Lrta()
@@ -69,6 +69,10 @@ if metodo == 1:
         decision = search.lrta_agent(pos, lab)
         if decision is None:
             print("\n Sen encerró el agente, no hay acciones posibles.")
+            tiempo_total=None
+            with open(archivo_csv, mode='a', newline='') as archivo:
+                escritor_csv = csv.writer(archivo)
+                escritor_csv.writerow([tiempo_total])
             break
 
         action, next_pos = decision
@@ -94,13 +98,17 @@ if metodo == 1:
         time.sleep(0.8)
         """
     else:
+        tiempo_total=None
+        with open(archivo_csv, mode='a', newline='') as archivo:
+            escritor_csv = csv.writer(archivo)
+            escritor_csv.writerow([tiempo_total])
         print("\n Límite de pasos alcanzado sin llegar a la meta.")
 
 # funciona maomeno, hay que cambiarlo porque el agente a veces se atasca, considerar entorno dinámico
 elif metodo == 2:
     print("\nHas elegido Algoritmo Genético (online, paso a paso).\n")
 
-    lab = maze.Maze(20)
+    lab = maze.Maze(35)
     lab.generateRandomMaze()
 
     start = lab.agent_start_position()
@@ -150,14 +158,15 @@ elif metodo == 2:
         print("No hay salidas en el laberinto.")
     else:
         target_idx = 0
-        max_steps = 400
+        max_steps = 300
 
         print("\nEstado inicial:")
         lab.update_visual_matrix()
         lab.printMaze()
-        time.sleep(0.6)
+        #time.sleep(0.6)
 
         for step in range(1, max_steps + 1):
+            inicio = time.time()
             # Con cierta probabilidad, el laberinto cambia (dinámico)
             if random.uniform(0, 1) <= 0.05:
                 lab.mover_laberinto()
@@ -179,7 +188,7 @@ elif metodo == 2:
                     print(f"Paso {step} → Sin movimiento válido, se queda en {current_pos}")
                     lab.update_visual_matrix()
                     lab.printMaze()
-                    time.sleep(0.6)
+                    # time.sleep(0.6)
                     continue
                 mv, (nr, nc) = fb
             else:
@@ -193,7 +202,7 @@ elif metodo == 2:
                         print(f"Paso {step} → {action} → sin alternativa, se queda en {current_pos}")
                         lab.update_visual_matrix()
                         lab.printMaze()
-                        time.sleep(0.6)
+                        # time.sleep(0.6)
                         continue
                     action, (nr, nc) = fb
 
@@ -213,10 +222,22 @@ elif metodo == 2:
             # Descubrimiento al pisar
             if cell_value == genetico.TRUE_GOAL:
                 print(f"\n¡Llegó a la META VERDADERA (O) en {step} pasos!")
+                fin = time.time()
+                tiempo_total = fin - inicio
+                tiempo_total = round(tiempo_total, 9)
+                print(f"Tiempo transcurrido: {tiempo_total} segundos")
+                with open(archivo_csv, mode='a', newline='') as archivo:
+                    escritor_csv = csv.writer(archivo)
+                    escritor_csv.writerow([tiempo_total])
                 break
             elif cell_value == genetico.FAKE_GOAL:
                 print("\nLlegó a una SALIDA FALSA (X). Cambiando a la siguiente salida más cercana…")
                 target_idx += 1  # pasamos a la siguiente candidata
                 continue
+            if step == max_steps:
+                tiempo_total=None
+                with open(archivo_csv, mode='a', newline='') as archivo:
+                    escritor_csv = csv.writer(archivo)
+                    escritor_csv.writerow([tiempo_total])
 
-            time.sleep(0.6)
+            # time.sleep(0.6)
