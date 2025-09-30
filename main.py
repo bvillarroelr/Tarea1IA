@@ -83,78 +83,125 @@ if metodo == 1:
 
 # funciona maomeno, hay que cambiarlo porque el agente a veces se atasca, considerar entorno dinámico
 elif metodo == 2:
-    print("\nHas elegido Algoritmo Genético.\n")
-    
-    # Inicializar laberinto y algoritmo genético
+    print("\nHas elegido Algoritmo Genético (online, paso a paso).\n")
+
     lab = maze.Maze(20)
     lab.generateRandomMaze()
-    ag = genetico.AlgoritmoGenetico(tamaño_poblacion=40, longitud_cromosoma=100)
-    
-    # Posición inicial del agente
-    pos = lab.agent_start_position()
-    
-    # Crear agente y colocarlo
+
+    start = lab.agent_start_position()
     agente = agent.Agent()
-    agente.position_setter(pos[0], pos[1])
-    lab.logical_matrix[pos[0], pos[1]] = 1
-    
-    lab.update_visual_matrix()
-    lab.printMaze()
-    print("\n")
-    
-    # Ejecutar algoritmo genético para encontrar la mejor solución
-    mejor_solucion, generaciones = ag.evolucionar(lab, agente, generaciones=30)
-    
-    if mejor_solucion:
-        print(f"Solución encontrada en {generaciones} generaciones. Ejecutando ruta...\n")
-        
-        # Resetear agente a posición inicial
-        lab.logical_matrix[agente.position_getter()[0], agente.position_getter()[1]] = 0
-        agente.position_setter(pos[0], pos[1])
-        lab.logical_matrix[pos[0], pos[1]] = 1
-        current_pos = pos
-        
-        # Ejecutar cada movimiento del mejor cromosoma paso a paso
-        for step, movimiento in enumerate(mejor_solucion):
-            # Calcular nueva posición
-            dr, dc = genetico.DELTA[movimiento]
-            new_r, new_c = current_pos[0] + dr, current_pos[1] + dc
-            
-            # Verificar si el movimiento es válido
-            if (0 <= new_r < lab.n and 0 <= new_c < lab.n and 
-                lab.logical_matrix[new_r, new_c] != genetico.WALL):
-                
-                # Mover agente
-                lab.logical_matrix[current_pos[0], current_pos[1]] = 0  # Limpiar posición anterior
-                lab.logical_matrix[new_r, new_c] = 1  # Nueva posición
-                current_pos = (new_r, new_c)
-                agente.position_setter(new_r, new_c)
-                
-                # Cambiar dinámicamente el laberinto (igual que LRTA*)
-                random_num = random.uniform(0,1)
-                if random_num <= 0.05:  # 5% probabilidad
-                    lab.mover_laberinto()
-                
-                # Mostrar estado actual
-                print(f"Paso {step + 1} → Movimiento {movimiento} → Nueva posición {current_pos}")
-                lab.update_visual_matrix()
-                lab.printMaze()
-                
-                # Verificar si llegó a una meta
-                cell_value = lab.logical_matrix[new_r, new_c]
-                if cell_value == genetico.TRUE_GOAL:
-                    print(f"\n¡El agente llegó a la meta verdadera en {step + 1} pasos!")
-                    break
-                elif cell_value == genetico.FAKE_GOAL:
-                    print(f"\nEl agente llegó a una salida falsa en {step + 1} pasos")
-                    break
-                
-                time.sleep(0.8)
-            else:
-                # Movimiento inválido - se queda en la misma posición
-                print(f"Paso {step + 1} → Movimiento {movimiento} → BLOQUEADO, se queda en {current_pos}")
-                lab.update_visual_matrix()
-                lab.printMaze()
-                time.sleep(0.8)
+    agente.position_setter(start[0], start[1])
+
+    # --- helpers simples ---
+    # calculo de distancia
+    def manhattan(a, b):
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+    # obetener lista de salidas ordenadas de menor a mayor (mas cercana a mas lejana)
+    def get_exits_sorted_from_start(lab, start_pos):
+        exits = []
+        for i in range(lab.n):
+            for j in range(lab.n):
+                v = lab.logical_matrix[i][j]
+                if v == genetico.FAKE_GOAL or v == genetico.TRUE_GOAL:
+                    exits.append((i, j))
+        exits.sort(key=lambda p: manhattan(start_pos, p))
+        return exits
+    # evaluar contexto local por si encuentra paredes o se queda encerrado
+    def choose_fallback_towards_target(pos, target, lab):
+        best = None
+        best_dist = None
+        for mv in ["N", "S", "E", "O"]:
+            dr, dc = genetico.DELTA[mv]
+            nr, nc = pos[0] + dr, pos[1] + dc
+            if 0 <= nr < lab.n and 0 <= nc < lab.n and lab.logical_matrix[nr][nc] != genetico.WALL:
+                d = manhattan((nr, nc), target)
+                if best is None or d < best_dist:
+                    best = (mv, (nr, nc))
+                    best_dist = d
+        return best  # puede ser None si está completamente encerrado
+
+    # --- GA online (replanificación por paso) ---
+    ga = genetico.AlgoritmoGenetico(
+        tamaño_poblacion=40,     # pequeño: queremos latencia baja por paso
+        longitud_cromosoma=12,   # horizonte corto (12 pasos)
+        prob_mutacion=0.10,
+        prob_cruce=0.80,
+        seed=7
+    )
+
+    current_pos = agente.position_getter()
+    exit_order = get_exits_sorted_from_start(lab, current_pos)
+    if not exit_order:
+        print("No hay salidas en el laberinto.")
     else:
-        print("No se encontró solución")
+        target_idx = 0
+        max_steps = 400
+
+        print("\nEstado inicial:")
+        lab.update_visual_matrix()
+        lab.printMaze()
+        time.sleep(0.6)
+
+        for step in range(1, max_steps + 1):
+            # Con cierta probabilidad, el laberinto cambia (dinámico)
+            if random.uniform(0, 1) <= 0.05:
+                lab.mover_laberinto()
+
+            # Si ya probamos todas las salidas, terminamos
+            if target_idx >= len(exit_order):
+                print("\nNo quedan salidas por probar.")
+                break
+
+            target = exit_order[target_idx]
+
+            # Pedimos al GA SOLO la primera acción desde la posición actual hacia el target actual
+            action = ga.plan_one_action(lab, current_pos, target, generations_por_paso=12)
+
+            # Si GA no pudo (raro), usamos fallback directo
+            if action is None:
+                fb = choose_fallback_towards_target(current_pos, target, lab)
+                if fb is None:
+                    print(f"Paso {step} → Sin movimiento válido, se queda en {current_pos}")
+                    lab.update_visual_matrix()
+                    lab.printMaze()
+                    time.sleep(0.6)
+                    continue
+                mv, (nr, nc) = fb
+            else:
+                # Intentamos la acción propuesta
+                dr, dc = genetico.DELTA[action]
+                nr, nc = current_pos[0] + dr, current_pos[1] + dc
+                # Si es inválida, hacemos fallback hacia el target
+                if not (0 <= nr < lab.n and 0 <= nc < lab.n) or lab.logical_matrix[nr][nc] == genetico.WALL:
+                    fb = choose_fallback_towards_target(current_pos, target, lab)
+                    if fb is None:
+                        print(f"Paso {step} → {action} → sin alternativa, se queda en {current_pos}")
+                        lab.update_visual_matrix()
+                        lab.printMaze()
+                        time.sleep(0.6)
+                        continue
+                    action, (nr, nc) = fb
+
+            # Leer PRIMERO el valor de destino
+            cell_value = lab.logical_matrix[nr][nc]
+
+            # Mover agente
+            lab.logical_matrix[current_pos[0]][current_pos[1]] = 0
+            lab.logical_matrix[nr][nc] = 1
+            current_pos = (nr, nc)
+            agente.position_setter(nr, nc)
+
+            print(f"Paso {step} → Acción {action} → Nueva posición {current_pos}")
+            lab.update_visual_matrix()
+            lab.printMaze()
+
+            # Descubrimiento al pisar
+            if cell_value == genetico.TRUE_GOAL:
+                print(f"\n¡Llegó a la META VERDADERA (O) en {step} pasos!")
+                break
+            elif cell_value == genetico.FAKE_GOAL:
+                print("\nLlegó a una SALIDA FALSA (X). Cambiando a la siguiente salida más cercana…")
+                target_idx += 1  # pasamos a la siguiente candidata
+                continue
+
+            time.sleep(0.6)

@@ -30,13 +30,13 @@ class Maze():
                 else:
                     self.logical_matrix[i, j] = 0  # Espacio libre
         
-        # Colocar salidas (3 malas y 1 buena)
+        # Colocar salidas (2 malas y 1 buena)
         exits_placed = 0
-        while exits_placed < 4:
+        while exits_placed < 3:
             x = random.randint(1, self.n-2)
             y = random.randint(1, self.n-2)
             if self.logical_matrix[x, y] == 0:  # Asegurarse de que es un espacio libre
-                if exits_placed < 3:
+                if exits_placed < 2:
                     self.logical_matrix[x, y] = 3  # Mala salida
                 else:
                     self.logical_matrix[x, y] = 4  # Buena salida

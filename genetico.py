@@ -1,27 +1,15 @@
+# genetico.py — GA online (rolling horizon), simple y sin librerías externas.
+
 import random
-import agent
-# algoritmo genético: proceso de evolución artificial
-# cada cromosoma representa una secuencia de movimientos del agente
-# Atributos:
-# cromosoma: representación de una posible solución al problema (secuencia de acciones en este caso)
-# población inicial: posibleles soluciones iniciales que el agente podria intentar
-# fitness: qué tan buena es una solución (cromosoma) para resolver el problema
-# selección: elegir los mejores cromosomas para reproducirse y crear la próxima generación
-# cruce: combinar partes de dos cromosomas para crear nuevos cromosomas (hijos)
-# mutación: introducir cambios aleatorios en algunos cromosomas para mantener la diversidad genética (cambios de acciones en este caso)
-# evolución: repetir el proceso de selección, cruce y mutación durante varias generaciones para mejorar la población
 
-# finalmente, el mejor cromosoma obtenido es la ruta candidata más prometedora para resolver el laberinto
-
-# Códigos del laberinto establecidos en maze.py pero nombrados para mayor legibilidad
-
+# Códigos de celdas (de tu maze.py)
 FREE = 0
 AGENT = 1
 WALL = 2
 FAKE_GOAL = 3
 TRUE_GOAL = 4
 
-# Movimientos (N,S,E,O)
+# Movimientos permitidos y sus deltas
 MOVES = ["N", "S", "E", "O"]
 DELTA = {
     "N": (-1,  0),
@@ -29,277 +17,235 @@ DELTA = {
     "E": ( 0,  1),
     "O": ( 0, -1),
 }
+# Para evitar “ping-pong” inmediato en la mutación
+OPUESTO = {"N": "S", "S": "N", "E": "O", "O": "E"}
+
 
 class AlgoritmoGenetico:
-    def __init__(self, tamaño_poblacion, longitud_cromosoma, seed=None):
+    """
+    Algoritmo Genético para planificar EN LÍNEA (por paso):
+      - En cada paso, desde la posición actual y un target (salida candidata),
+        evoluciona rápidamente una población de trayectorias cortas y devuelve
+        SOLO la PRIMERA acción del mejor cromosoma.
+
+    Parámetros clave:
+      - tamaño_poblacion: individuos por paso (pequeño para baja latencia)
+      - longitud_cromosoma: horizonte de planificación (p. ej., 8–16)
+      - prob_mutacion: probabilidad de mutación por gen (0.05–0.15)
+      - prob_cruce: probabilidad de cruce 1 punto (≈0.8)
+      - seed: semilla opcional para reproducibilidad
+    """
+
+    def __init__(self, tamaño_poblacion, longitud_cromosoma,
+                 prob_mutacion=0.1, prob_cruce=0.8, seed=None):
         self.tamaño_poblacion = tamaño_poblacion
         self.longitud_cromosoma = longitud_cromosoma
-        self.rng = random.Random(seed) #si no se pasa seed, python usa el reloj del sistema, siempre aleatorio.
-        self.poblacion = []  # lista de cromosomas (cada uno es lista de "N","S","E","O")
+        self.prob_mutacion = prob_mutacion
+        self.prob_cruce = prob_cruce
+        self.rng = random.Random(seed)
 
-    # 1) Generar población inicial (rutas aleatorias)
-    def inicializar_poblacion(self):
-        self.poblacion = []
-        for _ in range(self.tamaño_poblacion):
-            crom = [self.rng.choice(MOVES) for _ in range(self.longitud_cromosoma)]
-            self.poblacion.append(crom)
-
-    # 2) Buscar la meta verdadera (celda == 4)
-    def true_goal(self, maze):
-        n = len(maze.logical_matrix)
-        for i in range(n):
-            for j in range(n):
-                if maze.logical_matrix[i][j] == TRUE_GOAL:
-                    return (i, j)
-        raise ValueError("No se encontró meta verdadera (celda == 4).")
-
-    # 3) Aplicar una ruta respetando bordes y paredes, tomando como
-    #    estado inicial la posición que tenga el Agent (x,y).
-    #    Nota: NO modifica el maze ni el agent; solo simula.
-    def aplicar_ruta(self, start, cromosoma, maze):
-        r, c = start  # (x,y) segun tu Agent:contentReference[oaicite:2]{index=2}
-        n = len(maze.logical_matrix)
-        choques = 0
-        pasos = 0
-        for mv in cromosoma:
-            dr, dc = DELTA[mv]
-            nr, nc = r + dr, c + dc
-            # límites
-            if nr < 0 or nr >= n or nc < 0 or nc >= n:
-                choques += 1
-                continue
-            # pared
-            if maze.logical_matrix[nr][nc] == WALL:
-                choques += 1
-                continue
-            # avanzar
-            r, c = nr, nc
-            pasos += 1
-            # llegó a la meta verdadera
-            if maze.logical_matrix[r][c] == TRUE_GOAL:
-                break
-        return (r, c, choques, pasos)
-
-    # 4) Fitness sencillo:
-    #    + recompensa alta por llegar a (4)
-    #    - penaliza distancia final si no llega
-    #    - penaliza choques y un poco los pasos
-    def fitness_basico(self, maze, start, cromosoma, goal):
-        r, c, choques, pasos = self.aplicar_ruta(start, cromosoma, maze)
-        
-        if (r, c) == goal:
-            return 1000.0 - 0.1 * pasos
-        
-        dist = abs(r - goal[0]) + abs(c - goal[1])
-        score = -1.0 * dist
-        score -= 2.0 * choques
-        score -= 0.05 * pasos
-        return score
-
-    # 5) Elegir el mejor cromosoma de la población según este fitness
-    def mejor_actual(self, maze, agent):
-        goal = self.true_goal(maze)
-        mejor = None
-        mejor_fit = float("-inf")
-        for crom in self.poblacion:
-            fit = self.fitness_basico(maze, agent, crom, goal)
-            if fit > mejor_fit:
-                mejor, mejor_fit = crom, fit
-        return mejor, mejor_fit
-
-    # 6) Selección por torneo
-    def seleccion_torneo(self, maze, start, tamaño_torneo=3):
-        goal = self.true_goal(maze)
-        mejor_crom = None
-        mejor_fit = float("-inf")
-        
-        # Elegir aleatoriamente cromosomas para el torneo
-        candidatos = self.rng.sample(self.poblacion, tamaño_torneo)
-        
-        for crom in candidatos:
-            fit = self.fitness_basico(maze, start, crom, goal)
-            if fit > mejor_fit:
-                mejor_fit = fit
-                mejor_crom = crom
-        
-        return mejor_crom.copy()
-
-    # 7) Cruce de un punto
-    def cruce_un_punto(self, padre1, padre2):
-        if self.rng.random() > 0.8:  # 80% probabilidad de cruce
-            return padre1.copy(), padre2.copy()
-        
-        punto = self.rng.randint(1, self.longitud_cromosoma - 1)
-        hijo1 = padre1[:punto] + padre2[punto:]
-        hijo2 = padre2[:punto] + padre1[punto:]
-        return hijo1, hijo2
-
-    # 8) Mutación
-    def mutar(self, cromosoma, prob_mutacion=0.1):
-        mutado = cromosoma.copy()
-        for i in range(len(mutado)):
-            if self.rng.random() < prob_mutacion:
-                mutado[i] = self.rng.choice(MOVES)
-        return mutado
-
-    # 9) Algoritmo principal con integración de agent
-    def evolucionar(self, maze, agente, generaciones=50):
+    # ----------------------------------------------------------------------
+    # API pública (lo que usas desde main.py)
+    # ----------------------------------------------------------------------
+    def plan_one_action(self, lab, current_pos, target, generations_por_paso=12):
         """
-        Ejecuta el algoritmo genético usando la clase agent
+        Devuelve UNA acción ('N','S','E','O') calculada por GA desde current_pos a target.
+        Si no encuentra nada razonable, retorna None.
         """
-        print("=== INICIANDO ALGORITMO GENÉTICO ===")
-        start = agente.position_getter()  # Usar posición actual del agente
-        print(f"Posición inicial del agente: {start}")
-        
-        # Inicializar población
-        self.inicializar_poblacion()
-        print(f"Población inicializada: {self.tamaño_poblacion} cromosomas")
-        
-        mejor_solucion = None
-        mejor_fitness_global = float("-inf")
-        
-        for gen in range(generaciones):
-            print(f"\n--- Generación {gen + 1} ---")
-            
-            # Evaluar población actual
-            fitness_scores = []
-            goal = self.true_goal(maze)
-            
-            for crom in self.poblacion:
-                fit = self.fitness_basico(maze, start, crom, goal)
-                fitness_scores.append(fit)
-            
-            # Estadísticas de la generación
-            mejor_fit_gen = max(fitness_scores)
-            promedio_fit = sum(fitness_scores) / len(fitness_scores)
-            
-            # Actualizar mejor solución global
-            if mejor_fit_gen > mejor_fitness_global:
-                mejor_fitness_global = mejor_fit_gen
-                mejor_idx = fitness_scores.index(mejor_fit_gen)
-                mejor_solucion = self.poblacion[mejor_idx].copy()
-            
-            print(f"Mejor fitness: {mejor_fit_gen:.2f}")
-            print(f"Fitness promedio: {promedio_fit:.2f}")
-            
-            # Verificar si encontró la solución
-            if mejor_fit_gen >= 1000:
-                print("¡SOLUCIÓN ENCONTRADA!")
-                # Actualizar posición del agente al final del mejor camino
-                r, c, _, _ = self.aplicar_ruta(start, mejor_solucion, maze)
-                agente.position_setter(r, c)
-                return mejor_solucion, gen + 1
-            
-            # Crear nueva población
-            nueva_poblacion = []
-            
-            # Elitismo: mantener el mejor cromosoma
-            mejor_idx = fitness_scores.index(mejor_fit_gen)
-            nueva_poblacion.append(self.poblacion[mejor_idx].copy())
-            
-            # Generar resto de la población
-            while len(nueva_poblacion) < self.tamaño_poblacion:
-                # Selección
-                padre1 = self.seleccion_torneo(maze, start)
-                padre2 = self.seleccion_torneo(maze, start)
-                
-                # Cruce
-                hijo1, hijo2 = self.cruce_un_punto(padre1, padre2)
-                
-                # Mutación
-                hijo1 = self.mutar(hijo1)
-                hijo2 = self.mutar(hijo2)
-                
-                nueva_poblacion.extend([hijo1, hijo2])
-            
-            # Actualizar población (mantener tamaño exacto)
-            self.poblacion = nueva_poblacion[:self.tamaño_poblacion]
-            
-            # Adaptación dinámica cada 10 generaciones
-            if gen > 0 and gen % 10 == 0:
-                print(">>> Aplicando cambios dinámicos al laberinto...")
-                maze.mover_laberinto()
-        
-        print(f"\nGeneraciones completadas. Mejor fitness alcanzado: {mejor_fitness_global:.2f}")
-        
-        # Si no encontró la meta, mover el agente al mejor resultado
-        if mejor_solucion:
-            r, c, _, _ = self.aplicar_ruta(start, mejor_solucion, maze)
-            agente.position_setter(r, c)
-            print(f"Agente movido a la mejor posición encontrada: ({r}, {c})")
-        
-        return mejor_solucion, generaciones
+        # 1) Crear población inicial aleatoria
+        population = []
+        for i in range(self.tamaño_poblacion):
+            crom = []
+            for j in range(self.longitud_cromosoma):
+                crom.append(self.rng.choice(MOVES))
+            population.append(crom)
 
-    # 10) Función para mostrar la ruta del agente
-    def mostrar_ruta(self, cromosoma, maze, agente):
+        # 2) Evolucionar pocas generaciones (rápido para tiempo real)
+        for g in range(generations_por_paso):
+            scores = []
+            for idx in range(len(population)):
+                crom = population[idx]
+                fit = self._fitness_to_target(lab, current_pos, crom, target)
+                scores.append(fit)
+
+            selected = self._seleccion_torneo(population, scores, k=3)
+            population = self._crossover_y_mutacion(selected)
+
+        # 3) Elegir mejor cromosoma final y devolver SOLO su primer movimiento
+        if len(population) == 0:
+            return None
+
+        best_idx = 0
+        best_fit = self._fitness_to_target(lab, current_pos, population[0], target)
+        for i in range(1, len(population)):
+            fit = self._fitness_to_target(lab, current_pos, population[i], target)
+            if fit > best_fit:
+                best_fit = fit
+                best_idx = i
+
+        best_crom = population[best_idx]
+        if len(best_crom) == 0:
+            return None
+        return best_crom[0]
+
+    # ----------------------------------------------------------------------
+    # Núcleo GA (utilidades internas)
+    # ----------------------------------------------------------------------
+    def _seleccion_torneo(self, population, scores, k=3):
         """
-        Muestra paso a paso cómo se mueve el agente siguiendo el cromosoma
+        Selección por torneo. Devuelve una nueva lista del mismo tamaño que population,
+        con copias de cromosomas seleccionados.
         """
-        start = agente.position_getter()
-        print(f"Ruta desde {start}:")
-        
-        r, c = start
-        n = len(maze.logical_matrix)
-        
-        for i, mv in enumerate(cromosoma):
-            dr, dc = DELTA[mv]
-            nr, nc = r + dr, c + dc
-            
-            # Verificar movimiento válido
-            if nr < 0 or nr >= n or nc < 0 or nc >= n:
-                print(f"Paso {i+1}: {mv} -> FUERA DE LÍMITES, se queda en ({r}, {c})")
-                continue
-            
-            if maze.logical_matrix[nr][nc] == WALL:
-                print(f"Paso {i+1}: {mv} -> PARED, se queda en ({r}, {c})")
-                continue
-            
-            # Movimiento exitoso
-            r, c = nr, nc
-            cell_type = maze.logical_matrix[r][c]
-            
-            if cell_type == TRUE_GOAL:
-                print(f"Paso {i+1}: {mv} -> ({r}, {c}) ¡META ALCANZADA!")
-                break
-            elif cell_type == FAKE_GOAL:
-                print(f"Paso {i+1}: {mv} -> ({r}, {c}) - Salida falsa")
+        selected = []
+        N = len(population)
+        for _ in range(N):
+            best_idx = None
+            best_fit = None
+            # torneo de tamaño k
+            for __ in range(k):
+                idx = self.rng.randrange(N)
+                fit = scores[idx]
+                if best_idx is None or fit > best_fit:
+                    best_idx = idx
+                    best_fit = fit
+            selected.append(self._copiar_cromosoma(population[best_idx]))
+        return selected
+
+    def _crossover_y_mutacion(self, selected):
+        """
+        Empareja al azar y aplica cruce de 1 punto con prob_cruce, luego mutación por gen.
+        """
+        nueva_poblacion = []
+        idxs = list(range(len(selected)))
+        self.rng.shuffle(idxs)
+
+        i = 0
+        while i < len(idxs):
+            p1 = selected[idxs[i]]
+            if i + 1 < len(idxs):
+                p2 = selected[idxs[i + 1]]
             else:
-                print(f"Paso {i+1}: {mv} -> ({r}, {c})")
-        
-        # Actualizar posición del agente
-        agente.position_setter(r, c)
-        return (r, c)
+                p2 = selected[idxs[0]]  # si queda impares, empareja con el primero
+            h1, h2 = self._cruce_un_punto(p1, p2)
+            h1 = self._mutar(h1, self.prob_mutacion)
+            h2 = self._mutar(h2, self.prob_mutacion)
+            nueva_poblacion.append(h1)
+            nueva_poblacion.append(h2)
+            i += 2
 
-    # 11) Función de prueba
-    def probar_algoritmo(self, maze):
+        # Ajustar tamaño exacto
+        if len(nueva_poblacion) > len(selected):
+            nueva_poblacion = nueva_poblacion[:len(selected)]
+        return nueva_poblacion
+
+    def _cruce_un_punto(self, padre1, padre2):
         """
-        Función de prueba que crea un agente y ejecuta el algoritmo
+        Cruce 1 punto con probabilidad prob_cruce.
         """
-        # Crear agente en posición inicial
-        agente = agent.Agent()
-        pos_inicial = maze.agent_start_position()
-        agente.position_setter(pos_inicial[0], pos_inicial[1])
-        
-        print("=== PRUEBA DEL ALGORITMO GENÉTICO ===")
-        maze.printMaze()
-        
-        # Ejecutar algoritmo
-        solucion, generaciones = self.evolucionar(maze, agente, generaciones=30)
-        
-        if solucion:
-            print(f"\n=== RESULTADO ===")
-            print(f"Solución encontrada en {generaciones} generaciones")
-            print(f"Posición final del agente: {agente.position_getter()}")
-            
-            # Mostrar primeros movimientos de la solución
-            print("Primeros 15 movimientos de la mejor solución:")
-            print(" -> ".join(solucion[:15]))
-            
-            # Mostrar ruta completa (opcional)
-            respuesta = input("\n¿Mostrar ruta completa paso a paso? (s/n): ")
-            if respuesta.lower() == 's':
-                # Resetear agente a posición inicial para mostrar ruta
-                agente.position_setter(pos_inicial[0], pos_inicial[1])
-                self.mostrar_ruta(solucion, maze, agente)
-        
-        return solucion
+        if self.rng.random() < self.prob_cruce:
+            # punto en [1, L-1] para que ambos lados tengan al menos 1 gen
+            punto = self.rng.randint(1, self.longitud_cromosoma - 1)
+            hijo1 = padre1[:punto] + padre2[punto:]
+            hijo2 = padre2[:punto] + padre1[punto:]
+            return hijo1, hijo2
+        # sin cruce: copias
+        return self._copiar_cromosoma(padre1), self._copiar_cromosoma(padre2)
+
+    def _mutar(self, crom, p):
+        """
+        Mutación por gen. Evita meter el opuesto inmediato para reducir “N,S,N,S…”.
+        """
+        mut = self._copiar_cromosoma(crom)
+        for i in range(len(mut)):
+            if self.rng.random() < p:
+                opciones = MOVES[:]  # copia
+                if i > 0:
+                    op = OPUESTO.get(mut[i - 1])
+                    if op in opciones:
+                        opciones.remove(op)
+                mut[i] = self.rng.choice(opciones)
+        return mut
+
+    def _copiar_cromosoma(self, c):
+        # copia defensiva de lista de strings
+        nuevo = []
+        for g in c:
+            nuevo.append(g)
+        return nuevo
+
+    # ----------------------------------------------------------------------
+    # Función de aptitud hacia un target concreto (sin saber si es falsa o real)
+    # ----------------------------------------------------------------------
+    def _fitness_to_target(self, lab, start_pos, crom, target):
+        """
+        Evalúa una trayectoria hacia 'target' (una salida candidata):
+          - Respeta paredes y bordes (pasos inválidos NO mueven y penalizan).
+          - Shaping: premia acercarse, castiga alejarse.
+          - Penaliza revisitas y rachas de bloqueos.
+          - Premio moderado si pisa una salida falsa (3) — por “probarla”.
+          - Premio grande si pisa la salida verdadera (4) — éxito.
+        """
+        r = start_pos[0]
+        c = start_pos[1]
+        n = lab.n
+
+        choques = 0.0
+        pasos = 0
+        score = 0.0
+
+        # distancia Manhattan inicial al target
+        prev_dist = abs(r - target[0]) + abs(c - target[1])
+        invalid_streak = 0
+        visited = {(r, c)}
+
+        # Simular la secuencia (sin modificar el laberinto real)
+        for mv in crom:
+            dr = DELTA[mv][0]
+            dc = DELTA[mv][1]
+            nr = r + dr
+            nc = c + dc
+
+            # Fuera de límites o pared → no avanza y penaliza
+            if nr < 0 or nr >= n or nc < 0 or nc >= n or lab.logical_matrix[nr][nc] == WALL:
+                choques += 1.0
+                invalid_streak += 1
+                score -= 0.5 * invalid_streak  # más castigo si se insiste en chocar
+                continue
+            else:
+                invalid_streak = 0
+
+            # Avanza
+            r = nr
+            c = nc
+            pasos += 1
+
+            # Shaping por distancia al target: acercarse bien, alejarse mal
+            dist = abs(r - target[0]) + abs(c - target[1])
+            if dist < prev_dist:
+                score += 0.5
+            else:
+                score -= 0.5
+            prev_dist = dist
+
+            # Revisitas: pequeño castigo para evitar bucles locales
+            if (r, c) in visited:
+                choques += 0.5
+                score -= 0.2
+            else:
+                visited.add((r, c))
+
+            # Premios por tocar una salida
+            cell = lab.logical_matrix[r][c]
+            if cell == TRUE_GOAL:
+                score += 10000.0
+                break
+            elif cell == FAKE_GOAL:
+                score += 100.0
+                break
+
+        # Penalizaciones suaves al final
+        score -= 1.0 * prev_dist   # distancia final al target
+        score -= 2.0 * choques     # acumulado de choques/rachas
+        score -= 0.05 * pasos      # preferencia por trayectorias más cortas
+
+        return score
