@@ -10,6 +10,7 @@ class Lrta():
         self.maze = None  # referencia al laberinto
         self.goal = None  # meta fija
         self.agente = agent.Agent()  # Instancia del agente
+        self.visit_count = {} # Conteo de visitas a estados
 
    # def set_maze_and_goal(self, maze, goal): # Esto no lo estoy ocupando
     #    self.maze = maze
@@ -67,18 +68,18 @@ class Lrta():
         return 1 + self.H.get(s_next, self.heuristic(s_next, goal))
 
     def lrta_agent(self, s_prime, maze):
-        # Parametros son el estado actual, la meta y el laberinto
-        # Si estamos en el objetivo, parar
-        goal= self.find_closest_goal(s_prime, maze)
+        # 1️⃣ Encontrar la meta más cercana dinámica
+        goal = self.find_closest_goal(s_prime, maze)
 
+        # Si ya llegó a la meta
         if s_prime == goal:
             return None
-        
-        # Inicializar heurística con la ubicación actual
+
+        # 2️⃣ Inicializar heurística para estado nuevo
         if s_prime not in self.H:
             self.H[s_prime] = self.heuristic(s_prime, goal)
-        
-        # Actualizar el estado anterior
+
+        # 3️⃣ Actualizar heurística del estado previo (aprendizaje real)
         if self.s_prev is not None:
             self.result[(self.s_prev, self.a_prev)] = s_prime
             succs = self.actions(self.s_prev, maze)
@@ -86,30 +87,39 @@ class Lrta():
                 self.lrta_cost(self.s_prev, act, self.result.get((self.s_prev, act)), goal)
                 for act, _ in succs
             )
-        
-        # Calcula costos de todas las acciones
+
+        # 4️⃣ Generar sucesores desde el estado actual
         succs = self.actions(s_prime, maze)
         costs = []
+
         for a, s_next in succs:
-            c = self.lrta_cost(s_prime, a, self.result.get((s_prime, a), s_next), goal)
-            costs.append((a, s_next, c))
+            # Costo LRTA normal
+            base_cost = self.lrta_cost(s_prime, a, self.result.get((s_prime, a), s_next), goal)
 
-        # Desempate aleatorio para evitar siempre la misma elección si hay empates
-        random.shuffle(costs)   # Mezcla el orden actual
-        costs.sort(key=lambda x: x[2])  # Luego ordena por costo
+            # Penalización por visitas repetidas (nuevo atributo visit_count)
+            visit_penalty = self.visit_count.get(s_next, 0) * 0.5
 
-        # Elegir la mejor acción evitando regresar al estado anterior si es posible
+            # Penalizar regresar al estado previo inmediato
+            if self.s_prev is not None and s_next == self.s_prev:
+                visit_penalty += 0.8
+
+            total_cost = base_cost + visit_penalty
+            costs.append((a, s_next, total_cost))
+
+        # 5️⃣ Desempate aleatorio + ordenar por costo
+        random.shuffle(costs)
+        costs.sort(key=lambda x: x[2])
+
+        # 6️⃣ Elegir mejor acción (ya penalizada)
         best_action, best_state, best_cost = costs[0]
-        for a, s_next, c in costs:
-            if self.s_prev is not None and s_next == self.s_prev and c == best_cost:
-                continue  # Evita loops de dos estados
-            best_action, best_state, best_cost = a, s_next, c
-            break
 
-        a, s_next = best_action, best_state
-        
-        self.s_prev, self.a_prev = s_prime, a
+        # 7️⃣ Actualizar tracking del agente
+        self.s_prev, self.a_prev = s_prime, best_action
 
-        self.agente.position_setter(s_next[0], s_next[1])  # Actualiza la posición del agente
+        # Registrar visita
+        self.visit_count[best_state] = self.visit_count.get(best_state, 0) + 1
 
-        return a, s_next
+        # Mover agente en entorno
+        self.agente.position_setter(best_state[0], best_state[1])
+
+        return best_action, best_state

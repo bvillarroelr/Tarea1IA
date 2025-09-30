@@ -26,7 +26,7 @@ if metodo == 1:
     #lab.laberinto_estatico()
     lab.generateRandomMaze()
     search=lrta.Lrta()
-    goal=(17,3)
+    goal=lab.get_good_exit()
     pos = lab.agent_start_position() # Posición inicial del agente
     #agent.set_maze_and_goal(lab, goal)  # Meta fija en (17,3)
     lab.update_visual_matrix()

@@ -197,6 +197,14 @@ class Maze():
             y = random.randint(1, self.n-2)
         self.logical_matrix[x,y] = 1  # Colocar al agente en la posición inicial
         return (x,y)
+    
+    def get_good_exit(self):
+        for i in range(self.n):
+            for j in range(self.n):
+                if self.logical_matrix[i, j] == 4:
+                    return (i, j)
+        return None
+
 
 """"
 lab=Maze(20)
