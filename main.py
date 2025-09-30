@@ -5,19 +5,26 @@ import genetico
 import agent
 from time import sleep
 import time
+import csv
 
 # opcion 1: lrta*. 
 # opción 2: algoritmo genético
-
+"""
 print("Elige el método para que el agente resuelva el laberinto:")
 print("1: LRTA* (Learning Real-Time A*)")
 print("2: Algoritmo Genético")
 metodo = int(input())
+"""
 
+archivo_csv = "tiempos_lrta.csv"
+
+"""
 while metodo not in [1, 2]:
     print("Opción no válida. Elige 1 o 2:")
     metodo = int(input())
+"""
 
+metodo=1
 if metodo == 1:
     print("\nHas elegido LRTA*.\n")
 
@@ -43,12 +50,19 @@ if metodo == 1:
     #Bucle de LRTA*
     max_steps = 300
     for step in range(max_steps):
-
+        inicio = time.time()
         current_goal = search.find_closest_goal(pos, lab)
 
         # Verificar si ya llegó a la meta
         if pos == goal:
             print(f"\n El agente llegó a la meta en {step} pasos")
+            fin = time.time()
+            tiempo_total = fin - inicio
+            tiempo_total = round(tiempo_total, 9)
+            print(f"Tiempo transcurrido: {tiempo_total} segundos")
+            with open(archivo_csv, mode='a', newline='') as archivo:
+                escritor_csv = csv.writer(archivo)
+                escritor_csv.writerow([tiempo_total])
             break
 
         # Elegir acción con LRTA*
@@ -72,12 +86,13 @@ if metodo == 1:
         random_num = random.uniform(0,1)
         if random_num <= 0.45:  # 5% probabilidad
             lab.mover_laberinto()
-
+        """
         # Muestra el estado actual
         print(f"\nPaso {step} → Acción {action} → Nueva posición {pos}")
         lab.update_visual_matrix()
         lab.printMaze()
         time.sleep(0.8)
+        """
     else:
         print("\n Límite de pasos alcanzado sin llegar a la meta.")
 
