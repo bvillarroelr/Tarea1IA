@@ -68,18 +68,18 @@ class Lrta():
         return 1 + self.H.get(s_next, self.heuristic(s_next, goal))
 
     def lrta_agent(self, s_prime, maze):
-        # 1️⃣ Encontrar la meta más cercana dinámica
+        # Encontrar la meta más cercana dinámica
         goal = self.find_closest_goal(s_prime, maze)
 
         # Si ya llegó a la meta
         if s_prime == goal:
             return None
 
-        # 2️⃣ Inicializar heurística para estado nuevo
+        # Inicializar heurística para estado nuevo
         if s_prime not in self.H:
             self.H[s_prime] = self.heuristic(s_prime, goal)
 
-        # 3️⃣ Actualizar heurística del estado previo (aprendizaje real)
+        # Actualizar heurística del estado previo 
         if self.s_prev is not None:
             self.result[(self.s_prev, self.a_prev)] = s_prime
             succs = self.actions(self.s_prev, maze)
@@ -88,7 +88,7 @@ class Lrta():
                 for act, _ in succs
             )
 
-        # 4️⃣ Generar sucesores desde el estado actual
+        # Generar sucesores desde el estado actual
         succs = self.actions(s_prime, maze)
         costs = []
 
@@ -96,7 +96,7 @@ class Lrta():
             # Costo LRTA normal
             base_cost = self.lrta_cost(s_prime, a, self.result.get((s_prime, a), s_next), goal)
 
-            # Penalización por visitas repetidas (nuevo atributo visit_count)
+            # Penalización por visitas repetidas
             visit_penalty = self.visit_count.get(s_next, 0) * 0.5
 
             # Penalizar regresar al estado previo inmediato
@@ -106,14 +106,18 @@ class Lrta():
             total_cost = base_cost + visit_penalty
             costs.append((a, s_next, total_cost))
 
-        # 5️⃣ Desempate aleatorio + ordenar por costo
+        if not costs:
+            print(f" El agente quedó encerrado en {s_prime}.")
+            return None
+
+        # Desempate aleatorio + ordenar por costo
         random.shuffle(costs)
         costs.sort(key=lambda x: x[2])
 
-        # 6️⃣ Elegir mejor acción (ya penalizada)
+        # Elegir mejor acción (ya penalizada)
         best_action, best_state, best_cost = costs[0]
 
-        # 7️⃣ Actualizar tracking del agente
+        # Actualizar tracking del agente
         self.s_prev, self.a_prev = s_prime, best_action
 
         # Registrar visita

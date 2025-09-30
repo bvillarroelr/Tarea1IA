@@ -54,7 +54,7 @@ if metodo == 1:
         # Elegir acción con LRTA*
         decision = search.lrta_agent(pos, lab)
         if decision is None:
-            print("\n Meta alcanzada (None devuelto)")
+            print("\n Sen encerró el agente, no hay acciones posibles.")
             break
 
         action, next_pos = decision
@@ -70,7 +70,7 @@ if metodo == 1:
 
         # Cambiar dinámicamente el laberinto
         random_num = random.uniform(0,1)
-        if random_num <= 0.05:  # 5% probabilidad
+        if random_num <= 0.45:  # 5% probabilidad
             lab.mover_laberinto()
 
         # Muestra el estado actual
