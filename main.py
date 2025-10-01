@@ -115,7 +115,6 @@ elif metodo == 2:
     agente = agent.Agent()
     agente.position_setter(start[0], start[1])
 
-    # --- helpers simples ---
     # calculo de distancia
     def manhattan(a, b):
         return abs(a[0] - b[0]) + abs(a[1] - b[1])
@@ -143,7 +142,6 @@ elif metodo == 2:
                     best_dist = d
         return best  # puede ser None si está completamente encerrado
 
-    # --- GA online (replanificación por paso) ---
     ga = genetico.AlgoritmoGenetico(
         tamaño_poblacion=40,     # pequeño: queremos latencia baja por paso
         longitud_cromosoma=12,   # horizonte corto (12 pasos)
