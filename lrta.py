@@ -7,14 +7,12 @@ class Lrta():
         self.result = {}  # transiciones observadas
         self.s_prev = None  # estado previo
         self.a_prev = None  # acción previa
-        self.maze = None  # referencia al laberinto
-        self.goal = None  # meta fija
-        self.agente = agent.Agent()  # Instancia del agente
+        self.maze = None  
+        self.goal = None  
+        self.agente = agent.Agent()  
         self.visit_count = {} # Conteo de visitas a estados
 
-   # def set_maze_and_goal(self, maze, goal): # Esto no lo estoy ocupando
-    #    self.maze = maze
-     #   self.goal = goal
+
 
     def goals(self, maze):
         goals = []
@@ -48,7 +46,7 @@ class Lrta():
         return closest_goal
 
     def actions(self, state, maze):
-        #Acciones posibles (N,S,E,O) si no son paredes.
+        #Acciones posibles si no son paredes.
         moves = {
             "N": (-1, 0),
             "S": (1, 0),
@@ -71,7 +69,6 @@ class Lrta():
         # Encontrar la meta más cercana dinámica
         goal = self.find_closest_goal(s_prime, maze)
 
-        # Si ya llegó a la meta
         if s_prime == goal:
             return None
 
@@ -93,7 +90,7 @@ class Lrta():
         costs = []
 
         for a, s_next in succs:
-            # Costo LRTA normal
+            # Costo LRTA 
             base_cost = self.lrta_cost(s_prime, a, self.result.get((s_prime, a), s_next), goal)
 
             # Penalización por visitas repetidas

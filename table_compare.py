@@ -19,7 +19,6 @@ datos = {
     "Genético": [0.004233554, 0.00462269775, 0.00890745428571429, 0.0104662821538462, 0.0055885115]
 }
 
-# Crear DataFrame
 df = pd.DataFrame(datos)
 """
 # Crear figura
@@ -38,9 +37,8 @@ ax.grid(True)
 
 """
 
-fig, ax = plt.subplots(figsize=(8, 3))  # Ajusta el tamaño para centrar mejor
+fig, ax = plt.subplots(figsize=(8, 3))
 ax.axis('off')
-# Crear tabla debajo de la gráfica
 tabla = ax.table(
     cellText=df.round(8).values,
     colLabels=df.columns,
@@ -52,6 +50,5 @@ tabla.scale(1.5, 1.5)
 
 plt.subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
 
-# Ajustar diseño para que la tabla no tape la gráfica
 # plt.subplots_adjust(left=0.1, bottom=0.2)
 plt.show()

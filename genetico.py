@@ -1,8 +1,6 @@
-# genetico.py — GA online (rolling horizon), simple y sin librerías externas.
-
 import random
 
-# Códigos de celdas (de tu maze.py)
+# Códigos de celdas del maze
 FREE = 0
 AGENT = 1
 WALL = 2
@@ -44,15 +42,12 @@ class AlgoritmoGenetico:
         self.prob_cruce = prob_cruce
         self.rng = random.Random(seed)
 
-    # ----------------------------------------------------------------------
-    # API pública (lo que usas desde main.py)
-    # ----------------------------------------------------------------------
     def plan_one_action(self, lab, current_pos, target, generations_por_paso=12):
         """
         Devuelve UNA acción ('N','S','E','O') calculada por GA desde current_pos a target.
         Si no encuentra nada razonable, retorna None.
         """
-        # 1) Crear población inicial aleatoria
+        # Crear población inicial aleatoria
         population = []
         for i in range(self.tamaño_poblacion):
             crom = []
@@ -60,7 +55,7 @@ class AlgoritmoGenetico:
                 crom.append(self.rng.choice(MOVES))
             population.append(crom)
 
-        # 2) Evolucionar pocas generaciones (rápido para tiempo real)
+        # Evolucionar pocas generaciones 
         for g in range(generations_por_paso):
             scores = []
             for idx in range(len(population)):
@@ -71,7 +66,7 @@ class AlgoritmoGenetico:
             selected = self._seleccion_torneo(population, scores, k=3)
             population = self._crossover_y_mutacion(selected)
 
-        # 3) Elegir mejor cromosoma final y devolver SOLO su primer movimiento
+        # Elegir mejor cromosoma final y devolver su primer movimiento
         if len(population) == 0:
             return None
 
@@ -88,9 +83,7 @@ class AlgoritmoGenetico:
             return None
         return best_crom[0]
 
-    # ----------------------------------------------------------------------
-    # Núcleo GA (utilidades internas)
-    # ----------------------------------------------------------------------
+    # Núcleo GA 
     def _seleccion_torneo(self, population, scores, k=3):
         """
         Selección por torneo. Devuelve una nueva lista del mismo tamaño que population,
@@ -173,9 +166,7 @@ class AlgoritmoGenetico:
             nuevo.append(g)
         return nuevo
 
-    # ----------------------------------------------------------------------
     # Función de aptitud hacia un target concreto (sin saber si es falsa o real)
-    # ----------------------------------------------------------------------
     def _fitness_to_target(self, lab, start_pos, crom, target):
         """
         Evalúa una trayectoria hacia 'target' (una salida candidata):
@@ -205,7 +196,7 @@ class AlgoritmoGenetico:
             nr = r + dr
             nc = c + dc
 
-            # Fuera de límites o pared → no avanza y penaliza
+            # Fuera de límites o pared entonces no avanza y penaliza
             if nr < 0 or nr >= n or nc < 0 or nc >= n or lab.logical_matrix[nr][nc] == WALL:
                 choques += 1.0
                 invalid_streak += 1
